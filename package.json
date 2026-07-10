@@ -1,0 +1,28 @@
+{
+  "name": "openclaw-based-multi-agent",
+  "version": "1.0.0",
+  "description": "A production-grade, multi-agent AI assistant built on the **OpenClaw** runtime that answers natural-language real-estate questions over two real MLS datasets (~228K active listings + ~439K sold comps) and communicates through WhatsApp and email. It performs live property search, market analytics, semantic recommendations, retrieval-augmented knowledge answers, and safe, human-approved outbound messaging.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Di-123-Di/OpenClaw-Based-Multi-Agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Di-123-Di/OpenClaw-Based-Multi-Agent/issues"
+  },
+  "homepage": "https://github.com/Di-123-Di/OpenClaw-Based-Multi-Agent#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mysql2": "^3.22.6"
+  }
+}
