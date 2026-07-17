@@ -7,7 +7,7 @@ import type { PropertyFilters } from "./parse.ts";
 type ListingRow = {
   L_ListingID: string; L_Address: string; L_City: string;
   price: number; beds: number; baths: number; sqft: number;
-  type: string; PoolPrivateYN: string; ViewYN: string;
+    type: string; PoolPrivateYN: string; ViewYN: string; PhotoCount: number;
 };
 
 type SoldRow = {
@@ -23,7 +23,7 @@ export async function searchActiveListings(
     SELECT
       L_ListingID, L_Address, L_City,
       L_SystemPrice AS price, L_Keyword2 AS beds, LM_Dec_3 AS baths,
-      LM_Int2_3 AS sqft, L_Type_ AS type, PoolPrivateYN, ViewYN
+            LM_Int2_3 AS sqft, L_Type_ AS type, PoolPrivateYN, ViewYN, PhotoCount
     FROM rets_property
     WHERE L_Status = 'Active'
   `;

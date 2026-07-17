@@ -87,3 +87,26 @@ Safety:
   to prevent SQL injection.
 - LIMIT is capped at 50 rows per query (no bulk data export).
 - Database credentials are read from .env, never hard-coded.
+
+
+## Conversational agent (Week 4)
+
+The single-shot search becomes a multi-turn conversation with per-user memory.
+
+Files:
+
+    session.ts       -> per-user state (Map by userId) + mergeFilters
+    conversation.ts  -> handleMessage(userId, text): parse -> merge -> ask or search
+    chat.ts          -> demo that simulates a multi-turn conversation
+
+Run the conversation demo:
+
+    node skills/property-search/chat.ts
+
+How it works:
+- Each user message is parsed by the Week 2 parser, then merged into the user's
+  session. Only fields mentioned this turn overwrite stored ones, so earlier
+  answers (like the city) are remembered across turns.
+- If city, budget, or type is still missing, the agent asks a follow-up question.
+- Once enough is known, it searches rets_property and returns cards with address,
+  price, beds/baths, and photo count.
