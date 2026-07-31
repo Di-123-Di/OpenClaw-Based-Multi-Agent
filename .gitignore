@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 *.sql
 node_modules/
+skills/semantic-search/index_cache.json
