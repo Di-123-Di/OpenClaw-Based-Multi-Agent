@@ -26,13 +26,24 @@ auditable; this one is fuzzy by design.
                         embeds them, and caches the index to index_cache.json
     search.py        -> find_similar_listings(query, top_k): embeds the query
                         and returns the top_k most similar cached listings
+    demo.py          -> narrated multi-query walkthrough for presentations
 
 ## How to run
     python3 skills/semantic-search/build_index.py 500
     python3 skills/semantic-search/search.py "modern minimalist condo close to the beach"
+    python3 skills/semantic-search/demo.py
 
-`build_index.py` must be run at least once before `search.py` will work — it
-writes `index_cache.json` alongside these files.
+`build_index.py` must be run at least once before `search.py` or `demo.py`
+will work — it writes `index_cache.json` alongside these files.
+
+`search.py` doubles as both the importable `find_similar_listings()` function
+and a minimal one-query self-test when run directly (`python3 search.py
+"<query>"`), the same dual role every core file in this project has since
+Week 2's `parse.ts`. `demo.py` is a separate, narrated walkthrough for live
+presentations — it runs three semantically distinct example queries and
+reports how many listings repeat across their results (a live-computed
+sanity check, not an assumption), the same split Week 4's `chat.ts` uses
+alongside `conversation.ts`.
 
 ## Why only a sample, not all ~53K active listings
 Embedding every active listing would mean tens of thousands of paid OpenAI
