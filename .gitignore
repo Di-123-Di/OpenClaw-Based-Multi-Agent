@@ -6,3 +6,4 @@ __pycache__/
 *.sql
 node_modules/
 skills/semantic-search/index_cache.json
+skills/rag/rag_index_cache.json

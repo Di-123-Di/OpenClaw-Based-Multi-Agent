@@ -26,12 +26,13 @@ options — as opposed to a fresh search with new filters.
     embed.py       -> get_embedding(text), build_listing_text(row) -- embeds
                       the target listing on demand
     recommend.py   -> recommend_similar_listings(listing_id, top_k=5): the
-                      full pipeline; also runnable as a CLI demo
+                      full pipeline; also runnable as a single-target CLI
+                      self-test
 
 ## How to run
     python3 skills/recommendation/recommend.py <L_ListingID>
-    python3 skills/recommendation/recommend.py    # demo default: picks a
-                                                    # real listing from the
+    python3 skills/recommendation/recommend.py    # self-test default: picks
+                                                    # a real listing from the
                                                     # cached candidate index
 
 Requires `skills/semantic-search/index_cache.json` to already exist (run

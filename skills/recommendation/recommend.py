@@ -104,6 +104,27 @@ def recommend_similar_listings(listing_id: str, top_k: int = 5) -> list[dict]:
     return results
 
 
+def print_recommendation(rank: int, rec: dict) -> None:
+    """Shared formatting used by both this file's self-test and demo.py, so
+    the two don't drift into two copies of the same print logic."""
+    comp = rec["comp_validation"]
+    if comp["delta_pct"] is None:
+        comp_line = f"no recent comps in {rec['city']} to validate against"
+    else:
+        direction = "above" if comp["delta_pct"] > 0 else "below"
+        comp_line = (
+            f"listed ${rec['price']:,}, comps suggest ~${comp['comp_price']:,} "
+            f"({abs(comp['delta_pct'])}% {direction} comps, {comp['comp_count']} comps)"
+        )
+    beds = rec["beds"] if rec["beds"] is not None else "?"
+    baths = rec["baths"] if rec["baths"] is not None else "?"
+    sqft = rec["sqft"] if rec["sqft"] is not None else "?"
+    print(f"{rank}. {rec['address']}, {rec['city']} -- ${rec['price']:,} "
+          f"(score {rec['similarity_score']}/100)")
+    print(f"   {beds}bd/{baths}ba, {sqft} sqft, {rec['type']}")
+    print(f"   {comp_line}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         target_id = sys.argv[1]
@@ -117,20 +138,5 @@ if __name__ == "__main__":
           f"-- ${target_row['L_SystemPrice']:,}\n")
 
     for i, rec in enumerate(recommend_similar_listings(target_id, top_k=5), start=1):
-        comp = rec["comp_validation"]
-        if comp["delta_pct"] is None:
-            comp_line = f"no recent comps in {rec['city']} to validate against"
-        else:
-            direction = "above" if comp["delta_pct"] > 0 else "below"
-            comp_line = (
-                f"listed ${rec['price']:,}, comps suggest ~${comp['comp_price']:,} "
-                f"({abs(comp['delta_pct'])}% {direction} comps, {comp['comp_count']} comps)"
-            )
-        beds = rec["beds"] if rec["beds"] is not None else "?"
-        baths = rec["baths"] if rec["baths"] is not None else "?"
-        sqft = rec["sqft"] if rec["sqft"] is not None else "?"
-        print(f"{i}. {rec['address']}, {rec['city']} -- ${rec['price']:,} "
-              f"(score {rec['similarity_score']}/100)")
-        print(f"   {beds}bd/{baths}ba, {sqft} sqft, {rec['type']}")
-        print(f"   {comp_line}")
+        print_recommendation(i, rec)
         print()
