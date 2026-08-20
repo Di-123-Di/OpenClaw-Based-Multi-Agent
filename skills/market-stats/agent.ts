@@ -9,7 +9,7 @@ import { getCityMarketSummary, getMonthlyTrend } from "./stats.ts";
 const NON_CITY_WORDS = new Set(["the", "this", "that", "here", "there", "it", "market", "area", "region"]);
 
 function extractCity(query: string): string | null {
-  const match = query.match(/(?:in|for|about|near)\s+([A-Za-z\s]+?)(?:[?.!,]|\s+(?:right now|over|for|market)|$)/i);
+  const match = query.match(/(?:in|for|about|near)\s+([A-Za-z\s]+?)(?:[?.!,]|\s+(?:right now|over|for|market|and)|$)/i);
   const raw = match?.[1];
   if (!raw) return null;
   const cleaned = raw.replace(/,?\s*(ca|california)\s*$/i, "").trim().replace(/\s+/g, " ");

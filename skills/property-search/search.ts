@@ -4,7 +4,7 @@ import { query } from "./db.ts";
 import { fileURLToPath } from "node:url";
 import type { PropertyFilters } from "./parse.ts";
 
-type ListingRow = {
+export type ListingRow = {
   L_ListingID: string; L_Address: string; L_City: string;
   price: number; beds: number; baths: number; sqft: number;
     type: string; PoolPrivateYN: string; ViewYN: string; PhotoCount: number;

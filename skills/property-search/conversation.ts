@@ -18,6 +18,7 @@ export async function handleMessage(userId: string, text: string): Promise<strin
 
   // 3) Enough info — search and return formatted results.
   const listings = await searchActiveListings(f);
+  session.lastResults = listings; // Week 9: lets the orchestrator's recommend intent reference "the listing I just saw"
   if (listings.length === 0) {
     return `No active listings match your criteria in ${f.city}. Try a higher budget or a different city.`;
   }

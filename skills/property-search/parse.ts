@@ -35,7 +35,7 @@ export function parsePropertyQuery(query: string): PropertyFilters {
   };
   if (!query || !query.trim()) return empty;
 
-  const cityMatch  = query.match(/in ([A-Za-z\s]+?)(?:\s+under|\s+below|\s+with|\s+at|\s+over|,|$)/i);
+  const cityMatch  = query.match(/in ([A-Za-z\s]+?)(?:\s+under|\s+below|\s+with|\s+at|\s+over|\s+and|,|\.|$)/i);
   const priceMatch = query.match(/(?:under|below|less than|up to|max|maximum|at most)\s+\$?([\d,.]+)\s*(k|m)?/i);
   const bedsMatch  = query.match(/(\d+)[\s-]*(bed|beds|bedroom|bedrooms)/i);
   const bathsMatch = query.match(/(\d+(?:\.5)?)[\s-]*(bath|baths|bathroom|bathrooms)/i);

@@ -1,10 +1,12 @@
 // skills/property-search/session.ts
 // Week 4 — per-user conversation state, so the agent remembers preferences across turns.
 import type { PropertyFilters } from "./parse.ts";
+import type { ListingRow } from "./search.ts";
 
 export interface UserSession {
-  filters: PropertyFilters; // accumulated search criteria
-  step: number;             // how many turns so far
+  filters: PropertyFilters;        // accumulated search criteria
+  step: number;                    // how many turns so far
+  lastResults: ListingRow[] | null; // most recent search results (Week 9: orchestrator's recommend intent reads this)
 }
 
 // In-memory store: one session per userId.
@@ -19,7 +21,7 @@ function emptyFilters(): PropertyFilters {
 
 export function getSession(userId: string): UserSession {
   if (!sessions.has(userId)) {
-    sessions.set(userId, { filters: emptyFilters(), step: 0 });
+    sessions.set(userId, { filters: emptyFilters(), step: 0, lastResults: null });
   }
   return sessions.get(userId)!;
 }
