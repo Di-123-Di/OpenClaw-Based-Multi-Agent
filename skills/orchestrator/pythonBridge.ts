@@ -10,20 +10,32 @@ import { fileURLToPath } from "node:url";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const VENV_PYTHON = path.join(PROJECT_ROOT, "venv", "bin", "python3");
+const TIMEOUT_MS = 30_000;
 
 // scriptRelativePath is relative to the project root, e.g. "skills/rag/agent_cli.py".
 export function callPythonAgent(scriptRelativePath: string, args: string[]): Promise<any> {
   return new Promise((resolve, reject) => {
     const scriptPath = path.join(PROJECT_ROOT, scriptRelativePath);
-    const proc = spawn(VENV_PYTHON, [scriptPath, ...args]);
+    // stdin: "ignore" -- these scripts never read from stdin. Leaving the
+    // default open, unwritten pipe there was observed to occasionally stall
+    // Node's detection that the child had finished, even though the Python
+    // process itself ran and exited normally (confirmed by running the same
+    // script directly, outside Node, with no issue).
+    const proc = spawn(VENV_PYTHON, [scriptPath, ...args], { stdio: ["ignore", "pipe", "pipe"] });
 
     let stdout = "";
     let stderr = "";
     proc.stdout.on("data", (chunk) => { stdout += chunk; });
     proc.stderr.on("data", (chunk) => { stderr += chunk; });
 
-    proc.on("error", reject); // e.g. venv python not found
+    const timer = setTimeout(() => {
+      proc.kill();
+      reject(new Error(`${scriptRelativePath} timed out after ${TIMEOUT_MS}ms`));
+    }, TIMEOUT_MS);
+
+    proc.on("error", (err) => { clearTimeout(timer); reject(err); }); // e.g. venv python not found
     proc.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         reject(new Error(`${scriptRelativePath} exited with code ${code}: ${stderr}`));
         return;

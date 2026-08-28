@@ -33,16 +33,22 @@ Week 10's WhatsApp layer and Week 11's email workflows are expected to call
     orchestrate.ts     -> orchestrate(query, userId): the routing switch
     test.ts            -> classifyIntent unit tests + end-to-end orchestrate()
                          run across every agent, including mixed intent
+    demo.ts            -> short narrated walkthrough for live presentations
 
 ## How to run
     node skills/orchestrator/orchestrate.ts "<query>"
     node skills/orchestrator/test.ts
+    node skills/orchestrator/demo.ts
 
 `test.ts` is the actual deliverable proof: 12 classifyIntent unit tests, plus
 8 live `orchestrate()` calls covering all five routing paths (search,
 market, knowledge, recommend — both with and without a prior search in the
 session — mixed intent in both the handbook's literal example and a
-fuller happy-path version, and the unknown fallback).
+fuller happy-path version, and the unknown fallback). `demo.ts` is a
+separate, shorter file for presentations — the classifier deciding on a few
+sample queries, then the flagship mixed-intent case, then one more routing
+path chosen to make the TypeScript-to-Python bridge visible. It does not
+re-prove correctness `test.ts` already proves; it narrates a subset of it.
 
 ## Bridging TypeScript and Python
 `recommendation` and `rag` are Python (they need numpy/sklearn/openai

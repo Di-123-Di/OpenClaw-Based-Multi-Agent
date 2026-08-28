@@ -1,0 +1,12 @@
+{
+  "id": "idx-exchange-orchestrator",
+  "name": "IDX Exchange Orchestrator Bridge",
+  "description": "Routes incoming WhatsApp messages to the IDX Exchange multi-agent orchestrator (property search, market stats, recommendations, RAG knowledge).",
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}
