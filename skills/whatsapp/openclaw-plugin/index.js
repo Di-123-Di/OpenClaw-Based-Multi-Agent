@@ -31,14 +31,21 @@ import { spawn } from "node:child_process";
 // this project, so it cannot use a relative import back to messageHandler.ts
 // -- it reaches this project's logic over an absolute path instead, the same
 // "spawn + parse one JSON line" pattern orchestrator/pythonBridge.ts uses.
-const PROJECT_ROOT = "/Users/di/OpenClaw-Based Multi-Agent";
-const ENTRY_SCRIPT = `${PROJECT_ROOT}/skills/whatsapp/pluginEntry.ts`;
+// That absolute path used to be hardcoded here, which meant this plugin only
+// ever worked on the one machine it was written on -- cloning this repo
+// anywhere else, or moving it, silently broke real WhatsApp messages with a
+// "file not found" failure with no obvious cause. `projectRoot` now comes
+// from the plugin's own config (see openclaw.plugin.json's configSchema and
+// README.md's "Real WhatsApp connection" setup step), set once per machine
+// in ~/.openclaw/openclaw.json -- not from this project's own .env, which
+// this plugin has no way to locate without already knowing this path.
 const TIMEOUT_MS = 30_000;
 
-function callProjectOrchestrator(message, userId) {
+function callProjectOrchestrator(projectRoot, message, userId) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(process.execPath, [ENTRY_SCRIPT, message, userId], {
-      cwd: PROJECT_ROOT,
+    const entryScript = `${projectRoot}/skills/whatsapp/pluginEntry.ts`;
+    const proc = spawn(process.execPath, [entryScript, message, userId], {
+      cwd: projectRoot,
       stdio: ["ignore", "pipe", "pipe"], // no stdin -- see pythonBridge.ts's note on why
     });
 
@@ -74,6 +81,18 @@ export default definePluginEntry({
   description:
     "Routes incoming WhatsApp messages to the IDX Exchange multi-agent orchestrator (property search, market stats, recommendations, RAG knowledge).",
   register(api) {
+    // Fail loud at registration time, not silently on the first real
+    // message, if whoever installed this plugin never set projectRoot in
+    // ~/.openclaw/openclaw.json (plugins.entries.idx-exchange-orchestrator.config).
+    const projectRoot = api.pluginConfig?.projectRoot;
+    if (!projectRoot) {
+      api.logger.error(
+        "[idx-exchange] projectRoot is not configured -- set plugins.entries.idx-exchange-orchestrator.config.projectRoot " +
+        "in ~/.openclaw/openclaw.json to the absolute path of this project. See README.md's Real WhatsApp connection section."
+      );
+      return;
+    }
+
     api.on("before_dispatch", async (event, ctx) => {
       // Only take over WhatsApp; every other channel keeps OpenClaw's normal
       // built-in agent. Checking both event.channel and ctx.channelId
@@ -84,7 +103,7 @@ export default definePluginEntry({
       const userId = event.senderId ?? ctx.senderId ?? "unknown";
 
       try {
-        const reply = await callProjectOrchestrator(event.content, userId);
+        const reply = await callProjectOrchestrator(projectRoot, event.content, userId);
         return { handled: true, text: reply };
       } catch (err) {
         api.logger.error(`[idx-exchange] orchestrator call failed: ${err.message}`);

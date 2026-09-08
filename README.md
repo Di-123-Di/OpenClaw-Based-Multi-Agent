@@ -117,8 +117,31 @@ Create a `.env` file (never committed):
 ### 5. Run OpenClaw
 
     openclaw onboard          # one-time guided setup
-    openclaw channels add     # connect WhatsApp
+    openclaw channels add --channel whatsapp   # link a real WhatsApp number (QR code)
     openclaw status           # confirm the gateway is healthy
+
+### 6. Real WhatsApp connection (this project's orchestrator plugin)
+
+Connecting a WhatsApp number (step 5) only gets messages as far as
+OpenClaw's own default agent. To route real messages into this project's
+orchestrator instead, install the custom plugin at
+`skills/whatsapp/openclaw-plugin/` and point it at this project's absolute
+path on your machine -- the plugin runs from `~/.openclaw/extensions/`,
+outside the repo, so it has no other way to find it:
+
+    openclaw plugins install skills/whatsapp/openclaw-plugin --force
+    openclaw config set 'plugins.entries.idx-exchange-orchestrator.config.projectRoot' "$(pwd)"
+    openclaw gateway restart
+
+Verify it's wired up:
+
+    openclaw plugins inspect idx-exchange-orchestrator --runtime
+    # look for "Typed hooks: before_dispatch" and no config error in the log
+
+If `projectRoot` isn't set, the plugin logs a clear error at startup and
+declines to register its hook (OpenClaw's own default agent will keep
+answering, unhelpfully, instead) rather than failing silently on the first
+real message.
 
 ## Usage
 

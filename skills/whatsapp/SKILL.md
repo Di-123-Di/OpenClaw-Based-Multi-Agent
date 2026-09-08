@@ -54,7 +54,14 @@ OpenClaw plugin, `openclaw-plugin/`, installed at
 Installing/reinstalling the real plugin into a running OpenClaw gateway:
 
     openclaw plugins install skills/whatsapp/openclaw-plugin --force
+    openclaw config set 'plugins.entries.idx-exchange-orchestrator.config.projectRoot' "$(pwd)"
     openclaw gateway restart
+
+`projectRoot` is a required plugin config value (see `openclaw.plugin.json`'s
+`configSchema`), not a hardcoded path -- the plugin runs from
+`~/.openclaw/extensions/`, outside this repo, so it can't locate the project
+on its own. Set once per machine; see README.md's "Real WhatsApp connection"
+step for the full setup.
 
 ## Deviation from the handbook's `formatForWhatsApp` shape
 The handbook's `formatForWhatsApp` takes a structured `AgentResult` (a raw
@@ -72,6 +79,17 @@ reply -- not re-implement card formatting that already exists and is already
 tested.
 
 ## Design notes
+- **`projectRoot` comes from plugin config, not a hardcoded path.** Earlier
+  versions of `index.js` had this project's absolute path written directly
+  into the source, which only ever worked on the one machine it was written
+  on -- cloning the repo anywhere else would make the plugin fail on the
+  first real WhatsApp message with an opaque "file not found." It now reads
+  `api.pluginConfig.projectRoot`, declared in `openclaw.plugin.json`'s
+  `configSchema` and set per-machine in `~/.openclaw/openclaw.json` -- not
+  in this project's own `.env`, which the plugin has no way to locate
+  without already knowing this same path. `register()` checks for it and
+  logs a clear error (declining to register the hook) if it's missing,
+  rather than failing confusingly later.
 - **`sendTypingIndicator` is a documented stub, not a fake success.** It
   no-ops rather than pretending to call a WhatsApp API that isn't connected
   -- the alternative (silently "succeeding" at something that never
