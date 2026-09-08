@@ -23,6 +23,10 @@
   "homepage": "https://github.com/Di-123-Di/OpenClaw-Based-Multi-Agent#readme",
   "dependencies": {
     "dotenv": "^17.4.2",
-    "mysql2": "^3.22.6"
+    "mysql2": "^3.22.6",
+    "nodemailer": "^9.0.6"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.1"
   }
 }

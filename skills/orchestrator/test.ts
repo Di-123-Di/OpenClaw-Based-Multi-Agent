@@ -20,6 +20,10 @@ const CASES: Case[] = [
   { query: "What is a list-to-close ratio?", expected: "knowledge" },
   { query: "Find me something similar to that one", expected: "recommend" },
   { query: "Show me more like this", expected: "recommend" },
+  { query: "Email me a market report for Irvine", expected: "email" },
+  { query: "Send me a recommendation digest email", expected: "email" },
+  { query: "approve", expected: "approve" },
+  { query: "Yes send it", expected: "approve" },
   { query: "Find me affordable homes in Pasadena and tell me whether prices are rising.", expected: "mixed" },
   { query: "3 bedroom homes in Irvine under 2m and is the market rising?", expected: "mixed" },
   { query: "asdlkjasldkj random gibberish", expected: "unknown" },
@@ -81,5 +85,17 @@ await run(
 
 clearSession("test-unknown");
 await run("unknown -> fallback message", "test-unknown", "asdlkjasldkj random gibberish");
+
+// email -> emailDraftAgent. Only exercises drafting -- this suite never
+// calls "approve" against a real pending draft, since that would actually
+// send a real email through this project's real Gmail credentials.
+// guardrails.test.ts is where the send path is tested, against a mocked
+// transporter.
+clearSession("test-email");
+await orchestrate("condos in Irvine under 2m", "test-email");
+await run("email -> emailDraftAgent (market report, after a prior search)", "test-email", "Email me a market report for Irvine");
+
+clearSession("test-approve-empty");
+await run("approve -> emailApproveAgent (no pending draft)", "test-approve-empty", "approve");
 
 process.exit(0);

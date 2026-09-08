@@ -8,7 +8,10 @@ import { getCityMarketSummary, getMonthlyTrend } from "./stats.ts";
 // ("tell me about the market" should ask a follow-up, not query City = "The").
 const NON_CITY_WORDS = new Set(["the", "this", "that", "here", "there", "it", "market", "area", "region"]);
 
-function extractCity(query: string): string | null {
+// Exported for orchestrator/agents.ts's email-draft agent (Week 11):
+// "email me a market report for Irvine" needs the same city-extraction
+// logic this skill already has, not a second copy of it.
+export function extractCity(query: string): string | null {
   const match = query.match(/(?:in|for|about|near)\s+([A-Za-z\s]+?)(?:[?.!,]|\s+(?:right now|over|for|market|and)|$)/i);
   const raw = match?.[1];
   if (!raw) return null;

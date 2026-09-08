@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { classifyIntent } from "./classifyIntent.ts";
 import {
   propertySearchAgent, marketStatsAgent, recommendationAgent, ragAgent,
+  emailDraftAgent, emailApproveAgent,
 } from "./agents.ts";
 
 function formatCombinedResponse(searchReply: string, marketReply: string): string {
@@ -27,6 +28,12 @@ export async function orchestrate(query: string, userId: string): Promise<string
 
     case "knowledge":
       return ragAgent(query);
+
+    case "email":
+      return emailDraftAgent(query, userId);
+
+    case "approve":
+      return emailApproveAgent(userId);
 
     case "mixed": {
       const [searchReply, marketReply] = await Promise.all([

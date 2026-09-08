@@ -4,8 +4,12 @@
 // without caring whether the underlying skill is TypeScript or Python.
 import { handleMessage } from "../property-search/conversation.ts";
 import { getSession } from "../property-search/session.ts";
-import { answerMarketQuestion } from "../market-stats/agent.ts";
+import { answerMarketQuestion, extractCity } from "../market-stats/agent.ts";
 import { callPythonAgent } from "./pythonBridge.ts";
+import { approveDraft, sendApprovedEmail } from "../email/emailTool.ts";
+import {
+  buildMarketReportEmail, buildPropertySummaryEmail, buildRecommendationDigestEmail, buildListingAlertEmail,
+} from "../email/templates.ts";
 
 // propertySearchAgent -- queries rets_property with structured filters.
 // Delegates to the Week 4 conversational agent (session-aware: it asks
@@ -57,12 +61,58 @@ export async function ragAgent(query: string): Promise<string> {
   return `${result.answer}\n\n(sources: ${result.sources.join(", ")})`;
 }
 
-// emailDraftAgent -- composes formatted property or market summaries.
-// Week 11 builds the real draft-then-approve workflow; this stub only
-// exists so the Agent Registry is complete and callable end to end. It is
-// intentionally not wired into classifyIntent()/orchestrate()'s routing
-// yet -- the handbook's own orchestrate() switch statement doesn't route
-// to it either, matching this same "registered, not yet reachable" state.
-export async function emailDraftAgent(_content: string): Promise<string> {
-  return "Email drafting isn't available yet -- that's a Week 11 feature (draft-then-approve workflow with human sign-off before anything sends).";
+// emailDraftAgent -- picks one of the four Week 11 email use cases from
+// the query's wording and the user's session context, drafts it, and holds
+// it in session.pendingEmailDraft. It never sends -- approveDraft() and
+// sendApprovedEmail() only run from emailApproveAgent, after the user
+// explicitly replies to the preview this function returns. `to` defaults
+// to the operator's own inbox (EMAIL_USER) the same way Week 10's WhatsApp
+// layer defaulted to selfChatMode for testing without a second real inbox.
+export async function emailDraftAgent(query: string, userId: string): Promise<string> {
+  const session = getSession(userId);
+  const to = process.env.EMAIL_USER ?? "";
+  if (!to) return "No email address is configured to send from (EMAIL_USER is unset).";
+
+  try {
+    let draft;
+    if (/\b(similar|comparable|recommend|more like)\b/i.test(query)) {
+      const target = session.lastResults?.[0];
+      if (!target) return "I don't have a recent listing to build a recommendation email from -- search for some homes first.";
+      draft = await buildRecommendationDigestEmail(to, target.L_ListingID, target.L_Address, target.L_City);
+    } else if (/\b(summary|this (listing|home|property))\b/i.test(query)) {
+      const target = session.lastResults?.[0];
+      if (!target) return "I don't have a recent listing to summarize -- search for some homes first.";
+      draft = await buildPropertySummaryEmail(to, target.L_ListingID);
+    } else if (/\b(new listing|alert)\b/i.test(query)) {
+      const result = await buildListingAlertEmail(to, session.filters, "2026-01-01");
+      draft = result.draft;
+    } else {
+      const city = extractCity(query) ?? session.filters.city;
+      if (!city) return "Which city should the market report cover?";
+      draft = await buildMarketReportEmail(to, city);
+    }
+
+    session.pendingEmailDraft = draft;
+    return `Draft ready:\nTo: ${draft.to}\nSubject: ${draft.subject}\n\nReply "approve" to send it.`;
+  } catch (err: any) {
+    return `I couldn't put that email together (${err.message}).`;
+  }
+}
+
+// emailApproveAgent -- the only place in this project that can actually
+// call sendApprovedEmail(). Requires a draft to already be sitting in the
+// session from emailDraftAgent -- there is no path from a fresh message
+// straight to a send.
+export async function emailApproveAgent(userId: string): Promise<string> {
+  const session = getSession(userId);
+  const draft = session.pendingEmailDraft;
+  if (!draft) return "I don't have a pending email draft to send.";
+
+  try {
+    await sendApprovedEmail(approveDraft(draft));
+    session.pendingEmailDraft = null;
+    return `Sent! "${draft.subject}" was delivered to ${draft.to}.`;
+  } catch (err: any) {
+    return `Sending failed (${err.message}). The draft is still pending -- try approving again.`;
+  }
 }

@@ -29,7 +29,7 @@ export function formatForWhatsApp(response: string): string {
   return `${text.slice(0, MAX_MESSAGE_LENGTH)}\n\n... (truncated -- ask a more specific question for fewer results)`;
 }
 
-export async function onWhatsAppMessage(message: string, userId: string): Promise<string> {
+export async function onWhatsAppMessage(message: string, userId: string): Promise<string> {  
   await sendTypingIndicator(userId);
   try {
     const result = await orchestrate(message, userId);

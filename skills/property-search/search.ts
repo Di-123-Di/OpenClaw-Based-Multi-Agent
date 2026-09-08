@@ -43,6 +43,55 @@ export async function searchActiveListings(
   return query<ListingRow>(sql, params);
 }
 
+// Week 11 -- one listing by ID, for the email skill's property-summary card.
+export async function getListingById(listingId: string): Promise<ListingRow | null> {
+  const rows = await query<ListingRow>(
+    `
+    SELECT
+      L_ListingID, L_Address, L_City,
+      L_SystemPrice AS price, L_Keyword2 AS beds, LM_Dec_3 AS baths,
+      LM_Int2_3 AS sqft, L_Type_ AS type, PoolPrivateYN, ViewYN, PhotoCount
+    FROM rets_property
+    WHERE L_ListingID = ?
+    `,
+    [listingId]
+  );
+  return rows[0] ?? null;
+}
+
+// Week 11 -- active listings matching a saved search, contracted for sale on
+// or after `sinceDate` -- the "new listing alert" use case. Takes an
+// explicit date rather than "the last N days from now" because a real alert
+// job tracks "since the last time this saved search was checked," not wall-
+// clock recency, and because this project's `rets_property` snapshot's most
+// recent ListingContractDate is well behind today's real calendar date.
+export async function getNewListings(
+  filters: PropertyFilters, sinceDate: string, limit = 10
+): Promise<ListingRow[]> {
+  let sql = `
+    SELECT
+      L_ListingID, L_Address, L_City,
+      L_SystemPrice AS price, L_Keyword2 AS beds, LM_Dec_3 AS baths,
+      LM_Int2_3 AS sqft, L_Type_ AS type, PoolPrivateYN, ViewYN, PhotoCount
+    FROM rets_property
+    WHERE L_Status = 'Active'
+      AND ListingContractDate >= ?
+  `;
+  const params: any[] = [sinceDate];
+  if (filters.city)     { sql += " AND L_City = ?";         params.push(filters.city); }
+  if (filters.maxPrice) { sql += " AND L_SystemPrice <= ?"; params.push(filters.maxPrice); }
+  if (filters.minBeds)  { sql += " AND L_Keyword2 >= ?";    params.push(filters.minBeds); }
+  if (filters.minBaths) { sql += " AND LM_Dec_3 >= ?";      params.push(filters.minBaths); }
+  if (filters.minSqft)  { sql += " AND LM_Int2_3 >= ?";     params.push(filters.minSqft); }
+  if (filters.type)     { sql += " AND L_Type_ = ?";        params.push(filters.type); }
+  if (filters.pool)     { sql += " AND PoolPrivateYN = ?";  params.push(filters.pool); }
+  if (filters.hasView)  { sql += " AND ViewYN = ?";         params.push(filters.hasView); }
+
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  sql += ` ORDER BY ListingContractDate DESC LIMIT ${safeLimit}`;
+  return query<ListingRow>(sql, params);
+}
+
 export async function getSoldComps(city: string, months = 12): Promise<SoldRow[]> {
   const safeMonths = Math.max(1, Math.min(120, Math.floor(months)));
   const sql = `

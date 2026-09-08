@@ -42,7 +42,8 @@ See the full component breakdown and request-flow diagram in
 - **Database:** MySQL 8 (`idx_exchange`)
 - **AI:** OpenAI embeddings (`text-embedding-3-small`) + an LLM for RAG and intent routing
 - **Channels:** WhatsApp, email
-- **Libraries:** pandas, numpy, scikit-learn, sqlalchemy, mysql-connector-python
+- **Libraries:** pandas, numpy, scikit-learn, sqlalchemy, mysql-connector-python (Python);
+  mysql2, nodemailer, openai (Node.js)
 
 ## Data
 
@@ -60,9 +61,15 @@ They join on `rets_property.L_ListingID = california_sold.ListingKey`
     ├── docs/
     │   └── architecture.md        # Architecture doc + request-flow diagram
     ├── skills/
-    │   └── property-search/       # NL query -> structured filters
-    │       ├── SKILL.md
-    │       └── parse.ts
+    │   ├── property-search/       # NL query -> structured filters, session memory
+    │   ├── market-stats/          # Aggregated trends and comps
+    │   ├── semantic-search/       # Embedding-based listing search
+    │   ├── recommendation/        # Similar listings + comp validation (Python)
+    │   ├── rag/                   # Grounded conceptual/knowledge answers (Python)
+    │   ├── orchestrator/          # Intent classification + agent routing
+    │   ├── whatsapp/              # WhatsApp channel + real OpenClaw plugin
+    │   └── email/                 # Draft-then-approve email workflows
+    ├── venv/                      # Python virtualenv (not committed)
     ├── verify_setup.py            # Environment / DB connectivity check
     ├── .env                       # Secrets (never committed)
     └── README.md
@@ -71,15 +78,16 @@ They join on `rets_property.L_ListingID = california_sold.ListingKey`
 
 ### Prerequisites
 
-- Node.js 22.19+ (24 recommended)
+- Node.js 22.19+ (24+ recommended; OpenClaw itself requires 22.22.3+/24.15+/25.9+)
 - Python 3.11+
 - MySQL 8
-- An OpenClaw install (`npm install -g openclaw`)
+- An OpenClaw install (`curl -fsSL https://openclaw.ai/install.sh | bash`)
 
 ### 1. Install
 
     git clone https://github.com/Di-123-Di/OpenClaw-Based-Multi-Agent.git
     cd OpenClaw-Based-Multi-Agent
+    npm install
     python3 -m venv venv
     source venv/bin/activate
     pip install pandas openai mysql-connector-python sqlalchemy scikit-learn numpy python-dotenv
@@ -120,16 +128,21 @@ Message the assistant on WhatsApp:
     "What's the average price per sqft in Pasadena?"
     "Find homes like the last one but in Newport Beach"
     "What does DOM mean?"
+    "Email me a market report for Irvine"   -> drafts an email, waits for approval
+    "approve"                                -> sends the pending draft
 
 ## Skills
 
 | Skill | Purpose | Data source |
 |---|---|---|
-| property-search | NL query -> structured filters | rets_property |
+| property-search | NL query -> structured filters, multi-turn session memory | rets_property |
 | market-stats | Aggregated trends and comps | california_sold |
+| semantic-search | Embedding-based similarity search over listings | rets_property |
 | recommendation | Similar listings + comp validation | both tables |
 | rag | Grounded conceptual answers | indexed docs |
-| email-draft | Draft-then-approve email workflows | both tables |
+| orchestrator | Classifies each message's intent and routes it to the right agent(s) | n/a |
+| whatsapp | Wires the orchestrator to a real WhatsApp connection via an OpenClaw plugin | n/a |
+| email | Draft-then-approve email workflows (alerts, market reports, summaries, digests) | both tables |
 
 ## Safety & Guardrails
 
@@ -140,9 +153,12 @@ Message the assistant on WhatsApp:
 
 ## Testing
 
-Each skill ships with its own test suite. For example:
+Each skill ships with its own test suite, runnable directly with Node's native
+TypeScript support (no build step) or the project's Python venv:
 
     node skills/property-search/parse.ts
+    node skills/orchestrator/test.ts        # intent classifier + full end-to-end routing
+    node skills/email/guardrails.test.ts    # draft-then-approve safety guardrails
 
 ## Roadmap
 

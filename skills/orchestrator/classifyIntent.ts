@@ -6,7 +6,7 @@
 // known limitation (see SKILL.md) with an LLM-based classifier as the
 // natural upgrade path -- same tradeoff parse.ts documents for its own
 // rule-based extraction.
-export type Intent = "search" | "market" | "recommend" | "knowledge" | "mixed" | "unknown";
+export type Intent = "search" | "market" | "recommend" | "knowledge" | "email" | "approve" | "mixed" | "unknown";
 
 // Definitional phrasing ("what does X mean", "what is a X") takes priority
 // over domain-word matches below, so "What is a list-to-close ratio?" is
@@ -24,13 +24,27 @@ const SEARCH_RE = /\b(\d+\s*(bed|bath)s?|bedrooms?|bathrooms?|condo(minium)?s?|t
 
 const MARKET_RE = /\b(market|trend|rising|falling|appreciat|depreciat|good time to (buy|sell)|average price|price per (sq ?ft|square foot)|days on market|list-to-close|sale-to-list)\b/i;
 
+// Week 11 -- "approve" must win outright, the same way KNOWLEDGE_RE does,
+// since it's a one-word reply to a draft the agent just showed the user,
+// not a new question to route by domain keywords.
+const APPROVE_RE = /\b(approve|confirm(ed)? (it|send|that)|yes,? send( it)?|send it|go ahead(?: and send)?)\b/i;
+
+// "email" is an unambiguous signal in this domain -- no property or market
+// question would naturally contain the word -- so a plain keyword match is
+// enough, same reasoning SEARCH_RE uses for its own domain words.
+const EMAIL_RE = /\bemail\b/i;
+
 export function classifyIntent(query: string): Intent {
   const isKnowledge = KNOWLEDGE_RE.test(query);
+  const isApprove = APPROVE_RE.test(query);
+  const isEmail = EMAIL_RE.test(query);
   const isRecommend = RECOMMEND_RE.test(query);
   const isSearch = SEARCH_RE.test(query);
   const isMarket = MARKET_RE.test(query);
 
   if (isKnowledge) return "knowledge"; // definitional phrasing wins outright
+  if (isApprove) return "approve"; // a reply to an already-shown draft, not a new request
+  if (isEmail) return "email";
   if (isRecommend) return "recommend";
   if (isSearch && isMarket) return "mixed";
   if (isSearch) return "search";

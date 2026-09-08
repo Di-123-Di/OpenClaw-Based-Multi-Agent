@@ -7,3 +7,4 @@ __pycache__/
 node_modules/
 skills/semantic-search/index_cache.json
 skills/rag/rag_index_cache.json
+skills/whatsapp/session-store.json
