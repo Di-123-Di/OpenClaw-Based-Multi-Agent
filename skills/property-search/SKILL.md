@@ -68,12 +68,12 @@ The parsed filter object is executed against MySQL by a small, safe query layer.
 Files:
 
     db.ts      -> connection pool + a parameterized query() helper
-    search.ts  -> searchActiveListings(filters) and getSoldComps(city, months)
-    run.ts     -> full pipeline: free text -> filters -> active listing cards
+    search.ts  -> searchActiveListings, getSoldComps, getListingById,
+                  getNewListings
 
-Run the full pipeline:
-
-    node skills/property-search/run.ts "3 bedroom homes in Irvine under 2m"
+The standalone Week 3 pipeline script (`run.ts`) was superseded by Week 4's
+`conversation.ts`/`chat.ts` below and removed — the full free-text-to-cards
+path is exercised through those instead.
 
 Query functions:
 - searchActiveListings(filters, page, limit) — builds a dynamic WHERE from only the
@@ -81,6 +81,12 @@ Query functions:
   price, paginated.
 - getSoldComps(city, months) — recent Residential sold comps from california_sold
   for market and price validation (used in Weeks 5 and 7).
+- getListingById(listingId) — one listing by ID (Week 11: the email skill's
+  property-summary card).
+- getNewListings(filters, sinceDate, limit) — active listings matching a saved
+  search, contracted on or after `sinceDate` (Week 11: the email skill's
+  new-listing alert). Takes an explicit date rather than "now" because a real
+  alert job tracks "since the last check," not wall-clock recency.
 
 Safety:
 - All user-supplied values are bound through ? placeholders (parameterized queries)

@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: A single entry point that classifies each incoming query's intent and routes it to the right specialized agent (property search, market stats, recommendation, RAG knowledge), or fans out to several in parallel for mixed-intent queries.
+description: A single entry point that classifies each incoming query's intent and routes it to the right specialized agent (property search, market stats, recommendation, RAG knowledge, email draft/approve), or fans out to several in parallel for mixed-intent queries.
 ---
 
 # Multi-Agent Orchestrator
@@ -13,22 +13,23 @@ skill from the handbook.
 
 ## When to use
 This is the top-level entry point, not something other skills call into —
-Week 10's WhatsApp layer and Week 11's email workflows are expected to call
+Week 10's WhatsApp layer and Week 11's email workflows both call
 `orchestrate()` rather than any individual agent directly.
 
-## Agent Registry (5 agents)
+## Agent Registry (6 agents)
 | Agent | Underlying skill | Language |
 |---|---|---|
 | `propertySearchAgent` | `property-search` (Week 2-4) — session-aware, asks follow-ups | TypeScript, in-process |
 | `marketStatsAgent` | `market-stats` (Week 5) | TypeScript, in-process |
 | `recommendationAgent` | `recommendation` (Week 7) | Python, via subprocess |
 | `ragAgent` | `rag` (Week 8) | Python, via subprocess |
-| `emailDraftAgent` | *(Week 11)* | stub only — see below |
+| `emailDraftAgent` | `email` (Week 11) — drafts one of four templates, never sends | TypeScript, in-process |
+| `emailApproveAgent` | `email` (Week 11) — the only path that can call `sendApprovedEmail` | TypeScript, in-process |
 
 ## Files
     pythonBridge.ts   -> callPythonAgent(scriptPath, args): spawns a Python
                          agent_cli.py and parses its JSON stdout
-    agents.ts         -> the five agent wrapper functions
+    agents.ts         -> the six agent wrapper functions
     classifyIntent.ts -> classifyIntent(query): rule-based intent classifier
     orchestrate.ts     -> orchestrate(query, userId): the routing switch
     test.ts            -> classifyIntent unit tests + end-to-end orchestrate()
@@ -40,11 +41,15 @@ Week 10's WhatsApp layer and Week 11's email workflows are expected to call
     node skills/orchestrator/test.ts
     node skills/orchestrator/demo.ts
 
-`test.ts` is the actual deliverable proof: 12 classifyIntent unit tests, plus
-8 live `orchestrate()` calls covering all five routing paths (search,
+`test.ts` is the actual deliverable proof: 16 classifyIntent unit tests, plus
+10 live `orchestrate()` calls covering all six routing paths (search,
 market, knowledge, recommend — both with and without a prior search in the
 session — mixed intent in both the handbook's literal example and a
-fuller happy-path version, and the unknown fallback). `demo.ts` is a
+fuller happy-path version, the unknown fallback, and email drafting/approve
+-- the approve path only against an empty session, since actually approving
+a real pending draft would send a real email through this project's real
+Gmail credentials; that send path is tested separately in
+`email/guardrails.test.ts` against a mocked transporter). `demo.ts` is a
 separate, shorter file for presentations — the classifier deciding on a few
 sample queries, then the flagship mixed-intent case, then one more routing
 path chosen to make the TypeScript-to-Python bridge visible. It does not
@@ -100,25 +105,29 @@ as Weeks 6-8 each found in their own underlying skills.
   successful search. If a user asks for recommendations with no prior
   search in their session, the agent says so explicitly rather than
   erroring or guessing a listing.
-- **`emailDraftAgent` is a stub, deliberately.** It exists in `agents.ts`
-  so the Agent Registry is complete, but — matching the handbook's own
-  `orchestrate()` switch statement, which also has no `"email"` case —
-  it is not reachable through `classifyIntent`/`orchestrate` yet. Building
-  real email logic now would be premature: Week 11 is specifically about
-  the draft-then-approve safety workflow that has to gate anything
-  send-capable, and building the agent before that guardrail exists would
-  mean a send-capable path with no approval gate.
+- **`emailDraftAgent` and `emailApproveAgent` split drafting from sending.**
+  `emailDraftAgent` picks one of the email skill's four templates from the
+  query's wording and the session's last search results, and stores the
+  result in `session.pendingEmailDraft` — it never calls
+  `sendApprovedEmail`. `emailApproveAgent` is the only function in this
+  project that does, and only once `classifyIntent` sees an `"approve"`-
+  shaped reply. This mirrors the same "the agent that decides what to say
+  is not the same code path that's allowed to act" separation the email
+  skill's `SKILL.md` documents for `draftEmail`/`sendApprovedEmail`
+  themselves.
 - **`formatCombinedResponse` just concatenates** the two agents' replies
   with a separator — the handbook doesn't specify its shape, and there's no
   requirement yet (WhatsApp formatting is Week 10) to do more than show
   both answers clearly.
 
 ## Verified results (real, not illustrative)
-`node skills/orchestrator/test.ts` passes 12/12 classifyIntent unit tests
-and completes all 8 end-to-end scenarios against the live database and real
+`node skills/orchestrator/test.ts` passes 16/16 classifyIntent unit tests
+and completes all 10 end-to-end scenarios against the live database and real
 OpenAI calls: real Irvine listings for a search query, a real San Diego
 market snapshot, a grounded RAG answer for "What is a list-to-close
 ratio?", five real comp-validated recommendations after a prior search (and
-a graceful message when there isn't one), and the handbook's mixed-intent
+a graceful message when there isn't one), the handbook's mixed-intent
 example correctly fanning out to both `propertySearchAgent` and
-`marketStatsAgent` in parallel and merging their replies.
+`marketStatsAgent` in parallel and merging their replies, and a real market-
+report email draft built from a prior search's city (plus a graceful
+"nothing pending" reply when `"approve"` is sent with no draft queued).
