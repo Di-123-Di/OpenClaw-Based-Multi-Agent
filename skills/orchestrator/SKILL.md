@@ -42,10 +42,12 @@ Week 10's WhatsApp layer and Week 11's email workflows both call
     node skills/orchestrator/demo.ts
 
 `test.ts` is the actual deliverable proof: 16 classifyIntent unit tests, plus
-10 live `orchestrate()` calls covering all six routing paths (search,
+13 live `orchestrate()` calls covering all six routing paths (search,
 market, knowledge, recommend — both with and without a prior search in the
 session — mixed intent in both the handbook's literal example and a
-fuller happy-path version, the unknown fallback, and email drafting/approve
+fuller happy-path version, the unknown fallback in all three of its states
+(fresh session, mid-conversation, and after a completed search), and email
+drafting/approve
 -- the approve path only against an empty session, since actually approving
 a real pending draft would send a real email through this project's real
 Gmail credentials; that send path is tested separately in
@@ -119,6 +121,22 @@ as Weeks 6-8 each found in their own underlying skills.
   with a separator — the handbook doesn't specify its shape, and there's no
   requirement yet (WhatsApp formatting is Week 10) to do more than show
   both answers clearly.
+- **The `unknown` fallback defers to a conversation already in progress.**
+  Week 4's `conversation.ts` asks a follow-up question whenever city,
+  budget, or type is missing, but the answer to one of those questions
+  ("under 2 million") contains no property vocabulary, so `classifyIntent`
+  finds no domain signal and returns `unknown` — routing it to the fallback
+  message would drop the answer and leave the session unchanged, so the
+  next turn asks for the budget again. `orchestrate()` therefore checks
+  `isAwaitingFollowUp(userId)` before the switch and hands an `unknown`
+  query back to `propertySearchAgent` when the session is mid-conversation,
+  mirroring `conversation.ts`'s own three missing-field checks rather than
+  inventing a second rule for what "still waiting" means. This is the same
+  reasoning `APPROVE_RE` documents for `"approve"`: a reply to a prompt the
+  agent just showed the user is not a new request to route by domain
+  keywords. Once all three fields are filled the session is no longer
+  awaiting anything, so a genuinely off-topic message still gets the
+  fallback — both directions are covered in `test.ts`.
 
 ## Verified results (real, not illustrative)
 `node skills/orchestrator/test.ts` passes 16/16 classifyIntent unit tests

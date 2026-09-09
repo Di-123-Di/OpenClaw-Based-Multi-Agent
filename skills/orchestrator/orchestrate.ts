@@ -4,6 +4,7 @@
 // several in parallel and merges their replies for a mixed-intent query.
 import { fileURLToPath } from "node:url";
 import { classifyIntent } from "./classifyIntent.ts";
+import { getSession } from "../property-search/session.ts";
 import {
   propertySearchAgent, marketStatsAgent, recommendationAgent, ragAgent,
   emailDraftAgent, emailApproveAgent,
@@ -13,8 +14,32 @@ function formatCombinedResponse(searchReply: string, marketReply: string): strin
   return `${searchReply}\n\n---\n\n${marketReply}`;
 }
 
+// Week 4's conversation agent asks a follow-up question ("What is your
+// budget?") whenever city, budget, or type is still missing. The user's
+// answer to that question -- "under 2 million" -- carries no property
+// vocabulary at all, so classifyIntent correctly finds no domain signal and
+// returns "unknown". Without this check the default branch below replies
+// "I'm not sure how to help with that", drops the answer, and leaves the
+// session untouched -- so the next turn asks for the budget all over again.
+// Same reasoning APPROVE_RE documents for "approve": a reply to a prompt the
+// agent just showed the user is not a new request to route by domain
+// keywords. conversation.ts's own three checks define what "still waiting"
+// means, so this mirrors them rather than inventing a second rule.
+function isAwaitingFollowUp(userId: string): boolean {
+  const session = getSession(userId);
+  if (session.step === 0) return false; // no search turn yet -- nothing was asked
+  const f = session.filters;
+  return !f.city || !f.maxPrice || !f.type;
+}
+
 export async function orchestrate(query: string, userId: string): Promise<string> {
   const intent = classifyIntent(query);
+
+  // A reply to the follow-up question conversation.ts just asked belongs to
+  // the search conversation already in progress, whatever its wording.
+  if (intent === "unknown" && isAwaitingFollowUp(userId)) {
+    return propertySearchAgent(query, userId);
+  }
 
   switch (intent) {
     case "search":

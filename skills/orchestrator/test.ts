@@ -86,6 +86,35 @@ await run(
 clearSession("test-unknown");
 await run("unknown -> fallback message", "test-unknown", "asdlkjasldkj random gibberish");
 
+// The unknown fallback must NOT swallow the answer to a follow-up question
+// propertySearchAgent just asked. "under 2 million" has no property
+// vocabulary, so classifyIntent returns "unknown" -- but the session is
+// mid-conversation with a budget still missing, so orchestrate() routes it
+// back to the search agent instead of replying "I'm not sure how to help".
+// Expected: turn 1 asks for a budget, turn 2 returns real listings.
+clearSession("test-followup");
+await run(
+  "unknown mid-conversation -> propertySearchAgent (turn 1: asks for budget)",
+  "test-followup",
+  "3 bedroom condos in Irvine"
+);
+await run(
+  "unknown mid-conversation -> propertySearchAgent (turn 2: the answer, routed back)",
+  "test-followup",
+  "under 2 million"
+);
+
+// The mirror case: once the search has everything it needs, the session is
+// no longer awaiting anything, so a genuinely off-topic message must still
+// get the fallback rather than being forced into the search agent.
+clearSession("test-unknown-after-search");
+await orchestrate("3 bedroom condos in Irvine under 2m", "test-unknown-after-search");
+await run(
+  "unknown after a completed search -> fallback message",
+  "test-unknown-after-search",
+  "What's the weather today?"
+);
+
 // email -> emailDraftAgent. Only exercises drafting -- this suite never
 // calls "approve" against a real pending draft, since that would actually
 // send a real email through this project's real Gmail credentials.
