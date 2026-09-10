@@ -7,7 +7,7 @@ import { classifyIntent } from "./classifyIntent.ts";
 import { getSession } from "../property-search/session.ts";
 import {
   propertySearchAgent, marketStatsAgent, recommendationAgent, ragAgent,
-  emailDraftAgent, emailApproveAgent,
+  emailDraftAgent, emailApproveAgent, semanticSearchAgent,
 } from "./agents.ts";
 
 function formatCombinedResponse(searchReply: string, marketReply: string): string {
@@ -59,6 +59,9 @@ export async function orchestrate(query: string, userId: string): Promise<string
 
     case "approve":
       return emailApproveAgent(userId);
+
+    case "vibe":
+      return semanticSearchAgent(query, userId);
 
     case "mixed": {
       const [searchReply, marketReply] = await Promise.all([

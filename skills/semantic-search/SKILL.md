@@ -26,6 +26,12 @@ auditable; this one is fuzzy by design.
                         embeds them, and caches the index to index_cache.json
     search.py        -> find_similar_listings(query, top_k): embeds the query
                         and returns the top_k most similar cached listings
+    agent_cli.py     -> JSON-in/JSON-out subprocess bridge, so the TypeScript
+                        orchestrator's semanticSearchAgent can call this
+                        skill (see orchestrator/SKILL.md's Design notes for
+                        why this wasn't reachable from chat until it was
+                        added, and classifyIntent.ts's VIBE_RE for how a
+                        descriptive query gets routed here at all)
 
 ## How to run
     python3 skills/semantic-search/build_index.py 500

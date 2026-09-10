@@ -6,7 +6,7 @@
 // known limitation (see SKILL.md) with an LLM-based classifier as the
 // natural upgrade path -- same tradeoff parse.ts documents for its own
 // rule-based extraction.
-export type Intent = "search" | "market" | "recommend" | "knowledge" | "email" | "approve" | "mixed" | "unknown";
+export type Intent = "search" | "market" | "recommend" | "knowledge" | "email" | "approve" | "vibe" | "mixed" | "unknown";
 
 // Definitional phrasing ("what does X mean", "what is a X") takes priority
 // over domain-word matches below, so "What is a list-to-close ratio?" is
@@ -34,6 +34,18 @@ const APPROVE_RE = /\b(approve|confirm(ed)? (it|send|that)|yes,? send( it)?|send
 // enough, same reasoning SEARCH_RE uses for its own domain words.
 const EMAIL_RE = /\bemail\b/i;
 
+// Vibe-style, descriptive queries ("a charming craftsman with character")
+// have no structured filter words at all -- SEARCH_RE requires a concrete
+// bed/bath/type/price term, which is exactly what these queries don't have.
+// Without this, they fell through to "unknown" and got the generic fallback
+// message, even though semantic-search can actually answer them. This is a
+// real rule-based classifier's real limit: it can only catch descriptive
+// language it has a word list for, not "any sentence with no keywords
+// that also isn't gibberish" -- an LLM-based classifier (see the module
+// docstring) is the honest fix for that, this is a narrower patch that
+// covers the common case.
+const VIBE_RE = /\b(charming|cozy|character|quaint|rustic|craftsman|storybook|unique|ambiance|vibe|feel|style|cottage|charm)\b/i;
+
 export function classifyIntent(query: string): Intent {
   const isKnowledge = KNOWLEDGE_RE.test(query);
   const isApprove = APPROVE_RE.test(query);
@@ -49,5 +61,6 @@ export function classifyIntent(query: string): Intent {
   if (isSearch && isMarket) return "mixed";
   if (isSearch) return "search";
   if (isMarket) return "market";
+  if (VIBE_RE.test(query)) return "vibe"; // checked last: only for what nothing else recognized
   return "unknown";
 }

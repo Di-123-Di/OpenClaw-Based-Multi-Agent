@@ -149,6 +149,7 @@ Message the assistant on WhatsApp:
 
     "3-bedroom condos in Irvine under $1.5M with a pool"
     "What's the average price per sqft in Pasadena?"
+    "A charming craftsman with mountain views and character"  -> embedding-based vibe search
     "Find homes like the last one but in Newport Beach"
     "What does DOM mean?"
     "Email me a market report for Irvine"   -> drafts an email, waits for approval

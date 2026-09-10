@@ -26,7 +26,10 @@ const CASES: Case[] = [
   { query: "Yes send it", expected: "approve" },
   { query: "Find me affordable homes in Pasadena and tell me whether prices are rising.", expected: "mixed" },
   { query: "3 bedroom homes in Irvine under 2m and is the market rising?", expected: "mixed" },
+  { query: "a charming craftsman with mountain views and character", expected: "vibe" },
+  { query: "something with real cottage charm", expected: "vibe" },
   { query: "asdlkjasldkj random gibberish", expected: "unknown" },
+  { query: "What's the weather today?", expected: "unknown" },
 ];
 
 let passed = 0;
@@ -39,7 +42,7 @@ for (const { query, expected } of CASES) {
 }
 console.log(`\n${passed}/${CASES.length} classifyIntent tests passed`);
 
-// --- Part 2: orchestrate() end to end, across all five agents ---
+// --- Part 2: orchestrate() end to end, across all seven agents ---
 console.log("\n=== orchestrate() end-to-end ===");
 
 async function run(label: string, userId: string, query: string): Promise<void> {
@@ -126,5 +129,22 @@ await run("email -> emailDraftAgent (market report, after a prior search)", "tes
 
 clearSession("test-approve-empty");
 await run("approve -> emailApproveAgent (no pending draft)", "test-approve-empty", "approve");
+
+// vibe -> semanticSearchAgent, for descriptive queries with no structured
+// filter words at all -- the case classifyIntent's rule-based design can't
+// otherwise tell apart from genuine gibberish. Then chains straight into
+// recommend, proving semantic search results populate session.lastResults
+// the same way propertySearchAgent's do.
+clearSession("test-vibe");
+await run(
+  "vibe -> semanticSearchAgent (descriptive query, no filter words)",
+  "test-vibe",
+  "a charming craftsman with mountain views and character"
+);
+await run(
+  "recommend -> recommendationAgent (after a vibe search, not a structured one)",
+  "test-vibe",
+  "Show me more like this"
+);
 
 process.exit(0);

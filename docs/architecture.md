@@ -87,7 +87,7 @@ that can return more than a handful of rows is capped at 50
 
 The diagram in §5 shows one message's round trip through the WhatsApp
 transport layer. This one instead shows what `orchestrate()` actually fans
-out to underneath that -- all six agents, and exactly which database (or
+out to underneath that -- all seven agents, and exactly which database (or
 external system) each one touches, since "both tables" hides real
 differences in how each agent uses them.
 
@@ -97,6 +97,7 @@ flowchart TD
 
     ORC -->|search| PSA[propertySearchAgent<br/>TypeScript, in-process]
     ORC -->|market| MSA[marketStatsAgent<br/>TypeScript, in-process]
+    ORC -->|vibe| SSA[semanticSearchAgent<br/>Python, subprocess]
     ORC -->|recommend| RCA[recommendationAgent<br/>Python, subprocess]
     ORC -->|knowledge| RGA[ragAgent<br/>Python, subprocess]
     ORC -->|email| EDA[emailDraftAgent<br/>TypeScript, in-process]
@@ -106,6 +107,7 @@ flowchart TD
 
     PSA --> RP[(rets_property<br/>active listings)]
     MSA --> CS[(california_sold<br/>sold comps)]
+    SSA --> EC[(index_cache.json<br/>embeddings of rets_property)]
     RCA --> RP
     RCA --> CS
     RGA --> KD[(Indexed docs<br/>skills/rag/knowledge/*.md)]
@@ -114,6 +116,7 @@ flowchart TD
     EAA -->|sendApprovedEmail,<br/>only if status=approved| SMTP[Gmail SMTP]
 
     RP -. "joins on L_ListingID = ListingKey" .- CS
+    EC -. "built from, not live-queried" .- RP
 ```
 
 **Why this shape, not a simpler one:** `recommendationAgent` and
@@ -124,7 +127,11 @@ or property summary pulls from both the same way the equivalent chat reply
 does. `ragAgent` is the odd one out: it never touches MySQL at all, it
 retrieves from indexed markdown documents instead -- worth showing
 explicitly, since "both tables" as a blanket description would misstate
-what RAG actually does. `emailApproveAgent` is the only node in the whole
+what RAG actually does. `semanticSearchAgent` looks like it queries
+`rets_property` too, but it actually reads a pre-built embedding cache, not
+the live table -- a real distinction, since the cache can drift from
+`rets_property` until `build_index.py` is re-run, unlike every other agent's
+always-current queries. `emailApproveAgent` is the only node in the whole
 system with an edge to something outside this project's own data (Gmail),
 which is exactly why it's the one path gated behind an explicit approval
 status check rather than just being "another agent."
@@ -137,7 +144,7 @@ flowchart TD
     CH --> GW[OpenClaw Gateway]
     GW --> PL[idx-exchange-orchestrator plugin<br/>before_dispatch hook]
     PL --> OR[orchestrate<br/>classifyIntent + routing]
-    OR --> SK[Selected Skill<br/>search / market / recommend / rag / email]
+    OR --> SK[Selected Skill<br/>search / market / vibe / recommend / rag / email]
     SK --> TL[Tools<br/>typed async functions]
     TL --> DB[(MySQL<br/>rets_property + california_sold)]
     DB --> TL

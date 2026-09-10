@@ -1,10 +1,11 @@
 // skills/orchestrator/demo.ts
 // Week 9 demo -- a short, narrated walkthrough for a live presentation.
-// Separate from test.ts, which is an exhaustive proof suite (12 unit tests
-// + 8 full scenarios); this file shows only the parts that make the
-// orchestration story clear in a couple of minutes: the intent classifier
-// deciding in real time, then the flagship mixed-intent example, then one
-// more routing path that shows off the TypeScript-to-Python bridge.
+// Separate from test.ts, which is an exhaustive proof suite (19 unit tests
+// + 15 full scenarios, now covering all seven agents); this file shows only
+// the parts that make the orchestration story clear in a couple of minutes:
+// the intent classifier deciding in real time, then the flagship
+// mixed-intent example, then one more routing path that shows off the
+// TypeScript-to-Python bridge.
 //
 // Usage: node skills/orchestrator/demo.ts
 import { classifyIntent } from "./classifyIntent.ts";
@@ -16,7 +17,7 @@ function printHeader(title: string): void {
 }
 
 printHeader("Week 9 -- Multi-Agent Orchestrator");
-console.log("One entry point. Five specialized agents behind it.");
+console.log("One entry point. Seven specialized agents behind it.");
 
 printHeader("1. The intent classifier deciding, live");
 const sampleQueries = [

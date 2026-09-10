@@ -4,6 +4,7 @@
 // without caring whether the underlying skill is TypeScript or Python.
 import { handleMessage } from "../property-search/conversation.ts";
 import { getSession } from "../property-search/session.ts";
+import type { ListingRow } from "../property-search/search.ts";
 import { answerMarketQuestion, extractCity } from "../market-stats/agent.ts";
 import { callPythonAgent } from "./pythonBridge.ts";
 import { approveDraft, sendApprovedEmail } from "../email/emailTool.ts";
@@ -49,6 +50,45 @@ export async function recommendationAgent(userId: string): Promise<string> {
     return `🏠 ${r.address}, ${r.city} — $${r.price.toLocaleString()} | ${r.beds}bd/${r.baths}ba | score ${r.similarity_score}/100 | ${compLine}`;
   }).join("\n");
   return `Because you liked ${target.L_Address}, ${target.L_City}, here are similar listings:\n${cards}`;
+}
+
+// semanticSearchAgent -- vibe/descriptive queries ("charming craftsman with
+// character") that have no structured filter words for propertySearchAgent
+// to key off of. Sets session.lastResults the same way propertySearchAgent
+// does, so "show me more like this" chains into recommendationAgent
+// regardless of which search path found the listing. Semantic-search's
+// index cache doesn't carry pool/view/photo-count, so those three fields
+// are filled with honest "unknown" defaults rather than guessed.
+export async function semanticSearchAgent(query: string, userId: string): Promise<string> {
+  const result = await callPythonAgent("skills/semantic-search/agent_cli.py", [query]);
+  if (!result.ok) {
+    return `I couldn't search by description right now (${result.error}).`;
+  }
+
+  const listings = result.listings as any[];
+  if (listings.length === 0) {
+    return "I couldn't find anything matching that description.";
+  }
+
+  const session = getSession(userId);
+  session.lastResults = listings.map((l): ListingRow => ({
+    L_ListingID: l.listing_id,
+    L_Address: l.address,
+    L_City: l.city,
+    price: l.price,
+    beds: l.beds,
+    baths: l.baths,
+    sqft: l.sqft,
+    type: l.type,
+    PoolPrivateYN: "",
+    ViewYN: "",
+    PhotoCount: 0,
+  }));
+
+  const cards = listings.map((l) =>
+    `🏠 ${l.address}, ${l.city} — $${l.price.toLocaleString()} | ${l.beds}bd/${l.baths}ba | ${l.sqft} sqft | ${Math.round(l.similarity * 100)}% match`
+  ).join("\n");
+  return `Here are homes that match that description:\n${cards}`;
 }
 
 // ragAgent -- answers conceptual and definitional questions, grounded in
