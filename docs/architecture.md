@@ -23,10 +23,10 @@ sending; nothing else in this project sends anything on its own).
   LaunchAgent on this machine, reachable at `ws://127.0.0.1:18789`). It
   receives inbound channel messages, loads plugins, and runs OpenClaw's own
   default agent — unless a plugin's `before_dispatch` hook claims the
-  message first (see §5).
+  message first (see §6).
 - **Channels:** WhatsApp (real, connected) and email (outbound only, gated
   behind approval). WhatsApp is wired in via a custom OpenClaw plugin, not
-  OpenClaw's own built-in conversational agent — see §5.
+  OpenClaw's own built-in conversational agent — see §6.
 - **Skills:** Modular capability units, one per class of request:
 
   | Skill | What it does |
@@ -37,7 +37,7 @@ sending; nothing else in this project sends anything on its own).
   | `recommendation` | Similar listings + comp-validated pricing |
   | `rag` | Grounded conceptual/definitional answers from indexed docs |
   | `orchestrator` | Intent classification + routing across every other skill |
-  | `whatsapp` | The message handler + the real OpenClaw plugin (§5) |
+  | `whatsapp` | The message handler + the real OpenClaw plugin (§6) |
   | `email` | Draft-then-approve email workflows (§6) |
 
 - **Tools:** The typed, async functions a skill actually calls to get work
@@ -48,7 +48,7 @@ sending; nothing else in this project sends anything on its own).
   (`property-search/session.ts`). Holds accumulated search filters, the
   most recent search results (so "show me more like this" has something to
   point at), and any email draft awaiting an "approve" reply. In-memory by
-  default; see §5 for why the real WhatsApp path additionally persists it
+  default; see §6 for why the real WhatsApp path additionally persists it
   to a file.
 - **Memory:** Two different things, easy to conflate:
   1. Session memory above (per-user, short-lived, in-process).
@@ -83,7 +83,53 @@ that can return more than a handful of rows is capped at 50
 (`searchActiveListings`, `getSoldComps`, `getNewListings`) — a deliberate
 "never bulk-export the dataset" guardrail, not an incidental default.
 
-## 4. Request Flow (chat path)
+## 4. Multi-Agent Flow (every agent, both databases)
+
+The diagram in §5 shows one message's round trip through the WhatsApp
+transport layer. This one instead shows what `orchestrate()` actually fans
+out to underneath that -- all six agents, and exactly which database (or
+external system) each one touches, since "both tables" hides real
+differences in how each agent uses them.
+
+```mermaid
+flowchart TD
+    Q([Classified query]) --> ORC{{"orchestrate()<br/>classifyIntent + routing"}}
+
+    ORC -->|search| PSA[propertySearchAgent<br/>TypeScript, in-process]
+    ORC -->|market| MSA[marketStatsAgent<br/>TypeScript, in-process]
+    ORC -->|recommend| RCA[recommendationAgent<br/>Python, subprocess]
+    ORC -->|knowledge| RGA[ragAgent<br/>Python, subprocess]
+    ORC -->|email| EDA[emailDraftAgent<br/>TypeScript, in-process]
+    ORC -->|approve| EAA[emailApproveAgent<br/>TypeScript, in-process]
+    ORC -->|mixed| PSA
+    ORC -->|mixed| MSA
+
+    PSA --> RP[(rets_property<br/>active listings)]
+    MSA --> CS[(california_sold<br/>sold comps)]
+    RCA --> RP
+    RCA --> CS
+    RGA --> KD[(Indexed docs<br/>skills/rag/knowledge/*.md)]
+    EDA --> RP
+    EDA --> CS
+    EAA -->|sendApprovedEmail,<br/>only if status=approved| SMTP[Gmail SMTP]
+
+    RP -. "joins on L_ListingID = ListingKey" .- CS
+```
+
+**Why this shape, not a simpler one:** `recommendationAgent` and
+`emailDraftAgent` are the two places both tables genuinely meet in one
+request -- a recommendation needs `rets_property` for the candidate
+listings and `california_sold` for the comp check; an emailed market report
+or property summary pulls from both the same way the equivalent chat reply
+does. `ragAgent` is the odd one out: it never touches MySQL at all, it
+retrieves from indexed markdown documents instead -- worth showing
+explicitly, since "both tables" as a blanket description would misstate
+what RAG actually does. `emailApproveAgent` is the only node in the whole
+system with an edge to something outside this project's own data (Gmail),
+which is exactly why it's the one path gated behind an explicit approval
+status check rather than just being "another agent."
+
+## 5. Request Flow (WhatsApp transport path)
 
 ```mermaid
 flowchart TD
@@ -117,7 +163,7 @@ flowchart TD
 7. The plugin returns `{ handled: true, text: reply }`, which fully
    replaces OpenClaw's default agent reply for that message.
 
-## 5. The real WhatsApp integration (`skills/whatsapp/`)
+## 6. The real WhatsApp integration (`skills/whatsapp/`)
 
 This is the one piece that genuinely required reading OpenClaw's own
 installed source, not just its docs, to get working — worth documenting in
@@ -154,7 +200,7 @@ some detail since it's not obvious from the code alone.
     need this, since they run as one long-lived process for a whole
     conversation.
 
-## 6. Email workflow (`skills/email/`)
+## 7. Email workflow (`skills/email/`)
 
 Three-step gate, matching the handbook's contract but with one real
 enforcement added: `sendApprovedEmail()` checks `draft.status === "approved"`
